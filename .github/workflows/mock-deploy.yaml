@@ -11,7 +11,7 @@ jobs:
         with:
           node-version: 20
       - run: yarn install
-      - run: yarn build --mode mock
+      - run: yarn build
       - name: Deploy to GH Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
