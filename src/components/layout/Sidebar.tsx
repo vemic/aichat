@@ -30,6 +30,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useChatContext } from '../../context/ChatContext';
 import { usePoints } from '../../context/PointsContext';
 import NotificationBell from '../ui/NotificationBell';
+import PointsBalloon from '../ui/PointsBalloon';
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -384,25 +385,33 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, toggleSidebar }) => {
   }
 
   return (
-    <Box sx={{
-      p: 0,
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: 'Meiryo UI, Meiryo, "Segoe UI", "Hiragino Kaku Gothic ProN", Arial, sans-serif',
-      bgcolor: mode === 'dark' ? 'background.paper' : '#f9fafb',
-      position: 'relative',
-      transition: 'background-color 0.2s',
-    }}>
-      {/* ヘッダー部分 - AppBarの代わり */}
-      <Box sx={{ 
-        p: 2, 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        borderBottom: mode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)',
-      }}>
+    <Box
+      sx={{
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: mode === 'dark' ? '#1e1e1e' : '#ffffff',
+        borderRight: 1,
+        borderColor: 'divider',
+        overflow: 'hidden'
+      }}
+    >
+      {/* ポイント獲得バルーンを表示 */}
+      <PointsBalloon />
+      
+      {/* サイドバーヘッダー */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          p: 1,
+          pl: 2,
+          borderBottom: 1,
+          borderColor: 'divider'
+        }}
+      >
         <Typography 
           variant="h6" 
           noWrap 

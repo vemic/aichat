@@ -40,7 +40,6 @@ const Layout: React.FC = () => {
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
-
   return (    <Box 
       sx={{
         width: '100vw',
@@ -51,7 +50,7 @@ const Layout: React.FC = () => {
         maxHeight: '100vh',
         overflow: 'hidden',
         background: mode === 'dark' ? '#181818' : '#f5f5f5',
-        position: 'relative' // PointsIndicatorのドラッグ領域指定のための親要素
+        position: 'relative'
       }}
     >
       <Box sx={{

@@ -13,11 +13,11 @@ import ChatIcon from '@mui/icons-material/Chat';
 import LoginIcon from '@mui/icons-material/Login';
 import FeedbackIcon from '@mui/icons-material/Feedback';
 
-const NotificationBell: React.FC = () => {
-  const { t } = useTranslation();
-  const { recentEvents, unreadCount, markAllAsRead } = usePoints();
+const NotificationBell: React.FC = () => {  const { t } = useTranslation();  const { recentEvents, markAllAsRead } = usePoints();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+  // 未読のイベント数
+  const unreadCount = recentEvents.filter(e => !e.read).length;
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -42,12 +42,10 @@ const NotificationBell: React.FC = () => {
   };
 
   return (
-    <Box>
-      <Tooltip title={t('Notifications')}>
+    <Box>      <Tooltip title={t('お知らせ')}>
         <IconButton
           onClick={handleClick}
-          size="small"
-          aria-controls={open ? 'notifications-menu' : undefined}
+          size="small"          aria-controls={open ? 'notifications-menu' : undefined}
           aria-haspopup="true"
           aria-expanded={open ? 'true' : undefined}
         >
@@ -86,8 +84,7 @@ const NotificationBell: React.FC = () => {
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
         <Box sx={{ p: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="subtitle1" fontWeight={600}>
-            {t('Notifications')}
+          <Typography variant="subtitle1" fontWeight={600}>            {t('お知らせ')}
           </Typography>
           <IconButton size="small" onClick={handleClose} sx={{ mr: -0.5 }}>
             <CloseIcon fontSize="small" />
@@ -98,7 +95,7 @@ const NotificationBell: React.FC = () => {
         {recentEvents.length === 0 ? (
           <Box sx={{ p: 2, textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
-              {t('No notifications')}
+              {t('お知らせはありません')}
             </Typography>
           </Box>
         ) : (
@@ -106,9 +103,9 @@ const NotificationBell: React.FC = () => {
             <React.Fragment key={event.id}>              <MenuItem sx={{ 
                 py: 1.5, 
                 px: 2, // パディングを少し増やす
-                bgcolor: event.read ? 'transparent' : 'action.hover',
+                bgcolor: 'transparent',
                 '&:hover': {
-                  bgcolor: event.read ? 'action.hover' : 'action.selected'
+                  bgcolor: 'action.hover'
                 }
               }}>
                 <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', width: '100%' }}>
@@ -128,9 +125,8 @@ const NotificationBell: React.FC = () => {
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography variant="caption" color="text.secondary">
                         {format(event.timestamp, 'MM/dd HH:mm')}
-                      </Typography>
-                      <Typography variant="caption" color="primary" fontWeight={600}>
-                        +{event.points} pts
+                      </Typography>                      <Typography variant="caption" color="primary" fontWeight={600}>
+                        +{event.points} {t('ポイント')}
                       </Typography>
                     </Box>
                   </Box>

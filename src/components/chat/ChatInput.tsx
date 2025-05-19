@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
+import { usePoints } from '../../context/PointsContext';
 import SendIcon from '@mui/icons-material/Send';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import MicIcon from '@mui/icons-material/Mic';
@@ -37,6 +38,7 @@ const MODEL_OPTIONS = [
 const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
   const { t } = useTranslation();
   const { mode } = useTheme();
+  const { addPoints } = usePoints(); // ポイントコンテキストを使用
   const [input, setInput] = useState('');
   const [rows, setRows] = useState(3);
   const textFieldRef = useRef<HTMLDivElement>(null);
@@ -177,7 +179,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
       textField.removeEventListener('drop', handleDrop);
     };
   }, []);
-    // メッセージ送信
+  // メッセージ送信
   const handleSend = () => {
     if (input.trim()) {
       // 実際の実装では、ここでファイルをアップロードしてURLを取得する処理を追加
@@ -198,6 +200,13 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
       onSendMessage(message);
       setInput('');
       setFiles([]);
+      
+      // メッセージ送信でポイント追加 - usePointsフックから取得したaddPointsを使用
+      addPoints({
+        type: 'chat',
+        points: 1,
+        message: t('You earned 1 point for sending a message')
+      });
     }
   };
     // キーボードショートカット
