@@ -31,7 +31,12 @@ const PointsIndicator: React.FC = () => {
   const [position, setPosition] = useState(indicatorPosition);
   const indicatorRef = useRef<HTMLDivElement>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
-    // コンポーネント初期表示時に保存されたポジションを適用
+  // マウスの移動距離を追跡するための状態を追加
+  const startPosRef = useRef({ x: 0, y: 0 });
+  // 移動距離の閾値（この値以上移動したらドラッグと判定）
+  const DRAG_THRESHOLD = 3;
+    
+  // コンポーネント初期表示時に保存されたポジションを適用
   useEffect(() => {
     // ポジションが設定されていない（初期値の0,0）場合は、
     // デフォルトで右下に配置
@@ -46,6 +51,7 @@ const PointsIndicator: React.FC = () => {
       setPosition(indicatorPosition);
     }
   }, [indicatorPosition, updateIndicatorPosition]);
+  
   // ポイント通知機能は別なので、緑のポツを表示しない
   const hasRecentPoints = false;
   
@@ -54,42 +60,25 @@ const PointsIndicator: React.FC = () => {
   // 最新イベントの情報を抽出して依存配列に使用するための値を作成
   const latestEvent = recentEvents.length > 0 ? recentEvents[0] : null;
   const latestEventId = latestEvent?.id;
-  
-  // 新しいポイント獲得時にアニメーションを表示
+    
+  // このコンポーネントではポイント通知アニメーションは表示しない
+  // PointsBalloonコンポーネントが通知を担当する
   React.useEffect(() => {
-    // 最新イベントがあり、まだ処理していないIDで、かつ最近のイベント（60秒以内）である場合
-    if (latestEvent && 
-        latestEvent.id !== lastProcessedEventId && 
-        latestEvent.timestamp > Date.now() - 60000) {
-      console.log('新しいポイント獲得を検出:', latestEvent);
-      
+    // 最新イベントがあり、まだ処理していないIDの場合はIDを記録するだけ
+    if (latestEvent && latestEvent.id !== lastProcessedEventId) {
       // 最新のポイント獲得イベントのIDを記録
       setLastProcessedEventId(latestEvent.id);
-      
-      // 新しいポイントを表示
-      setAnimatingPoints({
-        points: latestEvent.points,
-        visible: true
-      });
-      
-      // アニメーションの状態をコンソールに出力（デバッグ用）
-      console.log('アニメーション状態:', { visible: true, points: latestEvent.points });
-      
-      // 3秒後にアニメーションを消す
-      const timer = setTimeout(() => {
-        setAnimatingPoints(prev => ({ ...prev, visible: false }));
-        console.log('アニメーション終了');
-      }, 3000);
-      
-      return () => clearTimeout(timer);
     }
   }, [latestEvent, latestEventId, lastProcessedEventId]);
   
   const handleOpen = () => {
+    // クリック操作と判定された場合のみダイアログを開く
     if (!isDragging) {
+      console.log('ポイントダイアログを開く');
       setOpen(true);
     }
   };
+  
   const handleClose = () => setOpen(false);
 
   // ドラッグ開始処理
@@ -101,7 +90,13 @@ const PointsIndicator: React.FC = () => {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top
       };
-      setIsDragging(true);
+      // マウスダウン位置を記録
+      startPosRef.current = {
+        x: e.clientX,
+        y: e.clientY
+      };
+      // この時点ではドラッグを開始していないのでfalseに設定
+      setIsDragging(false);
       
       // ドラッグ中のイベントをウィンドウに登録
       window.addEventListener('mousemove', handleMouseMove);
@@ -111,6 +106,16 @@ const PointsIndicator: React.FC = () => {
   
   // ドラッグ中処理
   const handleMouseMove = (e: MouseEvent) => {
+    // 移動距離を計算
+    const moveX = Math.abs(e.clientX - startPosRef.current.x);
+    const moveY = Math.abs(e.clientY - startPosRef.current.y);
+    
+    // 閾値を超える移動があった場合、ドラッグ状態にする
+    if (moveX > DRAG_THRESHOLD || moveY > DRAG_THRESHOLD) {
+      setIsDragging(true);
+    }
+    
+    // ドラッグ状態の場合のみ位置を更新
     if (isDragging) {
       // 画面外に出ないように制限を設定
       const newX = Math.max(0, Math.min(window.innerWidth - 60, e.clientX - dragOffsetRef.current.x));
@@ -124,13 +129,25 @@ const PointsIndicator: React.FC = () => {
   };
   
   // ドラッグ終了処理
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const handleMouseUp = (e: MouseEvent) => {
+    // 移動距離を計算
+    const moveX = Math.abs(e.clientX - startPosRef.current.x);
+    const moveY = Math.abs(e.clientY - startPosRef.current.y);
+    
+    // イベントリスナーを削除
     window.removeEventListener('mousemove', handleMouseMove);
     window.removeEventListener('mouseup', handleMouseUp);
     
-    // ドラッグ位置を保存
-    updateIndicatorPosition(position);
+    // ドラッグ操作だった場合はドラッグ位置を保存
+    if (isDragging) {
+      updateIndicatorPosition(position);
+    } else if (moveX <= DRAG_THRESHOLD && moveY <= DRAG_THRESHOLD) {
+      // 小さい移動でドラッグ状態でなければクリックイベントを処理
+      handleOpen();
+    }
+    
+    // ドラッグ状態をリセット
+    setIsDragging(false);
   };
 
   // ポイント獲得方法の説明

@@ -83,16 +83,26 @@ export const PointsProvider: React.FC<PointsProviderProps> = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('indicatorPosition', JSON.stringify(indicatorPosition));
   }, [indicatorPosition]);
-  
-  // ポイント追加処理
+    // ポイント追加処理
   const addPoints = (event: Omit<PointEvent, 'id' | 'timestamp' | 'read'>) => {
+    const timestamp = Date.now();
+    const id = `point-${timestamp}`;
+    
     const newEvent: PointEvent = {
       ...event,
-      id: `point-${Date.now()}`,
-      timestamp: Date.now(),
+      id,
+      timestamp,
       // すべてのポイントイベントは既読状態（通知ベルに表示しない）
       read: true,
     };
+
+    console.log('ポイント追加:', {
+      id,
+      type: event.type,
+      points: event.points,
+      message: event.message,
+      timestamp
+    });
 
     setTotalPoints(prev => prev + event.points);
     
