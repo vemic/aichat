@@ -5,7 +5,7 @@ import { PointsProvider } from './context/PointsContext';
 import { ChatProvider } from './context/ChatContext';
 import { CssBaseline } from '@mui/material';
 
-function App() {
+function App() {  
   return (
     <ThemeProvider>
       <CssBaseline />
