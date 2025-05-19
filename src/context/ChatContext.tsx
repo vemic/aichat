@@ -36,8 +36,7 @@ interface ChatProviderProps {
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [threads, setThreads] = useState<ChatThread[]>([]);
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  // 初期化時にモックデータを読み込む
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);  // 初期化時にモックデータを読み込む
   useEffect(() => {
     const loadMockData = async () => {
       try {
@@ -54,32 +53,35 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         
         // フォールバック: 古いメソッドを使用
         if (getMockHistory) {
-          const mockHistory = await getMockHistory();
-          
-          // モックデータから最初のスレッドを作成
-          const mockMessages: Message[] = mockHistory.map((msg: any) => ({
-            id: msg.id,
-            role: msg.position === 'right' ? 'user' : 'assistant',
-            content: msg.text,
-            timestamp: msg.date ? new Date(msg.date).getTime() : Date.now(),
-          }));
-          
-          const mockThreadId = 'thread-' + Date.now();
-          const mockThread: ChatThread = {
-            id: mockThreadId,
-            title: mockMessages[0]?.content?.substring(0, 30) + '...' || '新しいチャット',
-            messages: mockMessages,
-            lastUpdated: Date.now(),
-            isBookmarked: false,
-            isShared: false
-          };
-          
-          setThreads([mockThread]);
-          setActiveThreadId(mockThreadId);
+          try {
+            const mockHistory = await getMockHistory();
+            
+            if (mockHistory && Array.isArray(mockHistory) && mockHistory.length > 0) {
+              // モックデータから最初のスレッドを作成
+              const mockMessages: Message[] = mockHistory.map((msg: any) => ({
+                id: msg.id,
+                role: msg.position === 'right' ? 'user' : 'assistant',
+                content: msg.text || '空のメッセージ',
+                timestamp: msg.date ? new Date(msg.date).getTime() : Date.now(),
+              }));
+              
+              const mockThreadId = 'thread-' + Date.now();
+              const mockThread: ChatThread = {
+                id: mockThreadId,
+                title: mockMessages[0]?.content?.substring(0, 30) + '...' || '新しいチャット',
+                messages: mockMessages,
+                lastUpdated: Date.now(),
+                isBookmarked: false,
+                isShared: false
+              };
+              
+              setThreads([mockThread]);
+              setActiveThreadId(mockThreadId);
+            }
+          } catch (error) {
+            console.error('モックデータの読み込みに失敗しました:', error);
+          }
         }
-      } catch (error) {
-        console.error('モックデータの読み込みに失敗しました:', error);
-      }
     };
     
     loadMockData();

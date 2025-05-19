@@ -44,8 +44,8 @@ type PointsProviderProps = {
   children: ReactNode;
 };
 
-// ポイント獲得のルール設定
-const POINT_RULES = {
+// ポイント獲得のルール設定は参照用
+export const POINT_RULES = {
   login: 5,       // ログイン
   chat: 1,        // チャット送信
   feedback: 2,    // フィードバック送信
@@ -79,23 +79,19 @@ export const PointsProvider: React.FC<PointsProviderProps> = ({ children }) => {
     localStorage.setItem('totalPoints', totalPoints.toString());
     localStorage.setItem('pointEvents', JSON.stringify(recentEvents));
   }, [totalPoints, recentEvents]);
-
   // インジケータの位置が変更されたらローカルストレージに保存
   useEffect(() => {
     localStorage.setItem('indicatorPosition', JSON.stringify(indicatorPosition));
   }, [indicatorPosition]);
-
+  
   // ポイント追加処理
   const addPoints = (event: Omit<PointEvent, 'id' | 'timestamp' | 'read'>) => {
-    // リアルタイムイベント（チャットメッセージ送信など）は通知ベルに表示しない
-    const isRealTimeEvent = event.type === 'chat';
-    
     const newEvent: PointEvent = {
       ...event,
       id: `point-${Date.now()}`,
       timestamp: Date.now(),
-      // リアルタイムイベントは既読フラグをtrueにして通知ベルには表示しない
-      read: isRealTimeEvent,
+      // すべてのポイントイベントは既読状態（通知ベルに表示しない）
+      read: true,
     };
 
     setTotalPoints(prev => prev + event.points);
