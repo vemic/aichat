@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Box, Typography } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import { usePoints } from '../../context/PointsContext';
@@ -35,9 +35,10 @@ const PointsBalloon: React.FC = () => {
   // アニメーション中フラグ
   const [isAnimating, setIsAnimating] = useState(false);
   
-  // 最新イベントの情報を抽出して依存配列に使用するための値を作成
-  const latestEvent = recentEvents.length > 0 ? recentEvents[0] : null;
-  const latestEventId = latestEvent?.id;
+  // 最新イベントの情報をメモ化して不必要な再計算を防止
+  const latestEvent = useMemo(() => {
+    return recentEvents.length > 0 ? recentEvents[0] : null;
+  }, [recentEvents]);
   
   // タイマー参照を保持
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -53,13 +54,13 @@ const PointsBalloon: React.FC = () => {
   
   // 新しいポイント獲得を検出してキューに追加
   useEffect(() => {
-    // 初期ロードが完了しており、最新イベントがあり、まだ処理していないIDで、かつ最近のイベント（60秒以内）である場合
-    if (initialLoadDone && 
-        latestEvent && 
-        latestEvent.id !== lastProcessedEventId && 
-        latestEvent.timestamp > Date.now() - 60000) {
-      console.log('新しいポイント獲得を検出:', latestEvent);
-      
+    // 既に処理済みのIDであれば何もしない
+    if (!latestEvent || latestEvent.id === lastProcessedEventId) {
+      return;
+    }
+    
+    // 初期ロードが完了しており、最新イベントが最近のイベント（60秒以内）である場合
+    if (initialLoadDone && latestEvent.timestamp > Date.now() - 60000) {
       // 最新のポイント獲得イベントのIDを記録
       setLastProcessedEventId(latestEvent.id);
       
@@ -70,14 +71,12 @@ const PointsBalloon: React.FC = () => {
         timestamp: latestEvent.timestamp
       }]);
     }
-  }, [latestEvent, latestEventId, lastProcessedEventId, initialLoadDone]);
+  }, [latestEvent, lastProcessedEventId, initialLoadDone]);
   
   // 通知キューを処理する効果
   useEffect(() => {
     // アニメーション中でなく、キューに通知がある場合は次の通知を表示
     if (!isAnimating && notificationQueue.length > 0) {
-      console.log('キューから次の通知を処理:', notificationQueue[0]);
-      
       // アニメーション状態を開始
       setIsAnimating(true);
       
@@ -108,21 +107,12 @@ const PointsBalloon: React.FC = () => {
         }
       };
     }
-  }, [notificationQueue, isAnimating]);  // キューの状態をデバッグ表示
-  useEffect(() => {
-    console.log('通知キュー状態:', { 
-      queueLength: notificationQueue.length, 
-      isAnimating, 
-      currentlyVisible: animatingPoints.visible 
-    });
-  }, [notificationQueue, isAnimating, animatingPoints.visible]);
+  }, [notificationQueue, isAnimating]);
 
   // バルーンが表示されない場合は何も表示しない
   if (!animatingPoints.visible) {
     return null;
   }
-  
-  console.log('バルーン表示中:', animatingPoints);
   
   return (
     <Box
