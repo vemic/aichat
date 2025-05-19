@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {   
   Box, Tooltip, Badge, Fab, Typography, Modal, 
   Paper, List, ListItem, ListItemText, IconButton,
@@ -15,19 +15,114 @@ import { useTheme } from '../../context/ThemeContext';
 const PointsIndicator: React.FC = () => {
   const { t } = useTranslation();
   const { mode } = useTheme();
-  const { totalPoints, recentEvents, markAllAsRead } = usePoints();
-  const [open, setOpen] = useState(false);
+  const { 
+    totalPoints, 
+    recentEvents, 
+    markAllAsRead, 
+    indicatorPosition, 
+    updateIndicatorPosition 
+  } = usePoints();
   
-  // 最近のポイント獲得イベント（10秒以内）
-  const recentPointsGained = recentEvents.filter(
+  const [open, setOpen] = useState(false);
+  const [animatingPoints, setAnimatingPoints] = useState<{points: number, visible: boolean}>({
+    points: 0,
+    visible: false
+  });
+  
+  // ドラッグ状態の管理
+  const [isDragging, setIsDragging] = useState(false);
+  const [position, setPosition] = useState(indicatorPosition);
+  const indicatorRef = useRef<HTMLDivElement>(null);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  
+  // コンポーネント初期表示時に保存されたポジションを適用
+  useEffect(() => {
+    setPosition(indicatorPosition);
+  }, [indicatorPosition]);
+  
+  // 最近のポイント獲得イベント（10秒以内）の有無を確認
+  const hasRecentPoints = recentEvents.filter(
     event => Date.now() - event.timestamp < 10000
   ).length > 0;
   
-  const handleOpen = () => setOpen(true);
+  // 最新のポイント獲得イベントを取得
+  const latestEvent = recentEvents.length > 0 ? recentEvents[0] : null;
+  
+  // 最新イベントIDを追跡して新しいポイントが追加されたことを検出
+  const [lastProcessedEventId, setLastProcessedEventId] = useState<string | null>(null);
+  
+  // 新しいポイント獲得時にアニメーションを表示
+  React.useEffect(() => {
+    if (latestEvent && latestEvent.id !== lastProcessedEventId) {
+      // 最新のポイント獲得イベントのIDを記録
+      setLastProcessedEventId(latestEvent.id);
+      
+      // 新しいポイントを表示
+      setAnimatingPoints({
+        points: latestEvent.points,
+        visible: true
+      });
+      
+      // 3秒後にアニメーションを消す
+      const timer = setTimeout(() => {
+        setAnimatingPoints(prev => ({ ...prev, visible: false }));
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [latestEvent, lastProcessedEventId]);
+  
+  const handleOpen = () => {
+    if (!isDragging) {
+      setOpen(true);
+    }
+  };
+
   const handleClose = () => setOpen(false);
   
   const handleMarkAllAsRead = () => {
     markAllAsRead();
+  };
+
+  // ドラッグ開始処理
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (indicatorRef.current) {
+      const rect = indicatorRef.current.getBoundingClientRect();
+      dragOffsetRef.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+      setIsDragging(true);
+      
+      // ドラッグ中のイベントをウィンドウに登録
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+  };
+  
+  // ドラッグ中処理
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      // 画面外に出ないように制限を設定
+      const newX = Math.max(0, Math.min(window.innerWidth - 60, e.clientX - dragOffsetRef.current.x));
+      const newY = Math.max(0, Math.min(window.innerHeight - 70, e.clientY - dragOffsetRef.current.y));
+      
+      setPosition({
+        x: newX,
+        y: newY
+      });
+    }
+  };
+  
+  // ドラッグ終了処理
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    window.removeEventListener('mousemove', handleMouseMove);
+    window.removeEventListener('mouseup', handleMouseUp);
+    
+    // ドラッグ位置を保存
+    updateIndicatorPosition(position);
   };
 
   // ポイント獲得方法の説明
@@ -41,33 +136,76 @@ const PointsIndicator: React.FC = () => {
 
   return (
     <Box 
+      ref={indicatorRef}
       sx={{ 
         position: 'fixed', 
-        bottom: 20, 
-        right: 20, 
         zIndex: 1000,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center'
+        alignItems: 'center',
+        cursor: isDragging ? 'grabbing' : 'grab',
+        left: position.x,
+        top: position.y,
+        userSelect: 'none',
+        touchAction: 'none'
       }}
+      onMouseDown={handleMouseDown}
     >
-      <Tooltip title={t('AIChatPoints')} placement="left">
+      {/* ポイント獲得時のアニメーション表示 */}
+      {animatingPoints.visible && (
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: '100%',
+            right: '0',
+            mb: 1,
+            animation: 'floatUp 2s ease-out forwards',
+            '@keyframes floatUp': {
+              '0%': { opacity: 0, transform: 'translateY(10px)' },
+              '10%': { opacity: 1 },
+              '80%': { opacity: 1 },
+              '100%': { opacity: 0, transform: 'translateY(-30px)' }
+            }
+          }}
+        >
+          <Typography
+            sx={{
+              bgcolor: 'success.main',
+              color: 'white',
+              px: 1.5,
+              py: 0.5,
+              borderRadius: 10,
+              fontWeight: 'bold',
+              fontSize: '0.8rem',
+              display: 'flex',
+              alignItems: 'center',
+              boxShadow: 2,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <StarIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+            +{animatingPoints.points} {t('ポイント')}
+          </Typography>
+        </Box>
+      )}
+      
+      <Tooltip title={t('AIChatポイント')} placement="left">
         <Badge
           overlap="circular"
           anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
           badgeContent={
-            recentPointsGained ? 
+            hasRecentPoints ? 
             <Box 
               sx={{ 
-                width: 18, 
-                height: 18, 
+                width: 14, // サイズを小さく
+                height: 14, // サイズを小さく
                 bgcolor: 'success.main', 
                 borderRadius: '50%', 
                 border: '2px solid white',
-                animation: recentPointsGained ? 'pulse 1.5s infinite' : 'none',
+                animation: hasRecentPoints ? 'pulse 1.5s infinite' : 'none',
                 '@keyframes pulse': {
                   '0%': { boxShadow: '0 0 0 0 rgba(76, 175, 80, 0.7)' },
-                  '70%': { boxShadow: '0 0 0 10px rgba(76, 175, 80, 0)' },
+                  '70%': { boxShadow: '0 0 0 7px rgba(76, 175, 80, 0)' },
                   '100%': { boxShadow: '0 0 0 0 rgba(76, 175, 80, 0)' }
                 }
               }} 
@@ -78,31 +216,36 @@ const PointsIndicator: React.FC = () => {
             color="primary"
             aria-label="points"
             onClick={handleOpen}
+            size="small"
             sx={{ 
               bgcolor: 'warning.dark',
               '&:hover': {
                 bgcolor: 'warning.main'
-              }
+              },
+              width: 42, // 小さいサイズに調整
+              height: 42, // 小さいサイズに調整
+              boxShadow: 2
             }}
           >
-            <StarIcon />
+            <StarIcon sx={{ fontSize: '1.3rem' }} />
           </Fab>
         </Badge>
       </Tooltip>
-      
       <Typography 
         variant="caption" 
         sx={{ 
           mt: 0.5, 
-          py: 0.3,
-          px: 1.2,
-          borderRadius: 1, 
+          py: 0.2,
+          px: 1,
+          borderRadius: 10, 
+          fontSize: '0.7rem',
           bgcolor: 'background.paper', 
           boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 0 8px rgba(255, 255, 255, 0.15)' : 1,
           fontWeight: 600
         }}
       >
-        {totalPoints}      </Typography>
+        {totalPoints}
+      </Typography>
       
       {/* ポイント履歴モーダル */}
       <Modal
@@ -132,7 +275,8 @@ const PointsIndicator: React.FC = () => {
             justifyContent: 'space-between',
             alignItems: 'center',
             borderBottom: 1,
-            borderColor: 'divider'          }}>
+            borderColor: 'divider'
+          }}>
             <Typography variant="subtitle1" component="h2" sx={{ display: 'flex', alignItems: 'center', fontSize: '1rem', fontWeight: 600 }}>
               <StarIcon sx={{ color: 'warning.main', mr: 1, fontSize: '1.1rem' }} />
               {t('AIchat ポイント')} - {totalPoints} {t('ポイント')}
@@ -141,7 +285,7 @@ const PointsIndicator: React.FC = () => {
               <CloseIcon fontSize="small" />
             </IconButton>
           </Box>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, overflow: 'hidden' }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, overflow: 'hidden' }}>
             {/* ポイント履歴リスト */}
             <Box sx={{ 
               flex: 2, 
@@ -201,7 +345,7 @@ const PointsIndicator: React.FC = () => {
                   </ListItem>
                 )}
               </List>
-                {recentEvents.length > 0 && (
+              {recentEvents.length > 0 && (
                 <Box sx={{ p: 2, pt: 0, display: 'flex', justifyContent: 'center' }}>
                   <Button
                     size="small"
@@ -214,7 +358,7 @@ const PointsIndicator: React.FC = () => {
                 </Box>
               )}
             </Box>
-              {/* ポイント獲得方法 */}
+            {/* ポイント獲得方法 */}
             <Box sx={{ flex: 1, p: 2, overflowY: 'auto', height: { xs: '40vh', md: '60vh' } }}>
               <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.9rem' }}>
                 {t('ポイント獲得方法')}
@@ -229,7 +373,8 @@ const PointsIndicator: React.FC = () => {
                         bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)'
                       }}
                     >
-                      <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>
                             {rule.description}
                           </Typography>
@@ -242,7 +387,8 @@ const PointsIndicator: React.FC = () => {
                   </Box>
                 ))}
               </Box>
-            </Box>          </Box>
+            </Box>
+          </Box>
         </Paper>
       </Modal>
     </Box>

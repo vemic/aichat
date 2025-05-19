@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Box, Badge, Tooltip, IconButton, Menu, MenuItem, 
-  Typography, Avatar, ListItemText, Divider 
+  Typography, Avatar, Divider 
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import { usePoints } from '../../context/PointsContext';
@@ -63,16 +63,16 @@ const NotificationBell: React.FC = () => {
         onClose={handleClose}
         MenuListProps={{
           'aria-labelledby': 'notifications-button',
-        }}
-        PaperProps={{
+        }}        PaperProps={{
           elevation: 0,
           sx: {
             overflow: 'visible',
             filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.12))',
             mt: 1.5,
-            width: 320,
+            width: 350, // 横幅を320pxから350pxに調整
             maxHeight: 400,
             overflowY: 'auto',
+            borderRadius: 2, // 角を少し丸くする
             '&::-webkit-scrollbar': {
               width: '6px',
             },
@@ -103,9 +103,9 @@ const NotificationBell: React.FC = () => {
           </Box>
         ) : (
           recentEvents.map((event, index) => (
-            <React.Fragment key={event.id}>
-              <MenuItem sx={{ 
+            <React.Fragment key={event.id}>              <MenuItem sx={{ 
                 py: 1.5, 
+                px: 2, // パディングを少し増やす
                 bgcolor: event.read ? 'transparent' : 'action.hover',
                 '&:hover': {
                   bgcolor: event.read ? 'action.hover' : 'action.selected'
@@ -114,15 +114,15 @@ const NotificationBell: React.FC = () => {
                 <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', width: '100%' }}>
                   <Avatar 
                     sx={{ 
-                      width: 32, 
-                      height: 32, 
+                      width: 36, // サイズを少し大きく
+                      height: 36, 
                       bgcolor: 'transparent' 
                     }}
                   >
                     {getEventIcon(event.type)}
                   </Avatar>
                   <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" noWrap>
+                    <Typography variant="body2" sx={{ lineHeight: 1.4, mb: 0.5 }}>
                       {event.message}
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
