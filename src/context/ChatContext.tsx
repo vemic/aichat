@@ -79,9 +79,12 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
               setActiveThreadId(mockThreadId);
             }
           } catch (error) {
-            console.error('モックデータの読み込みに失敗しました:', error);
+            console.error('getMockHistory実行中にエラーが発生しました:', error);
           }
         }
+      } catch (error) {
+        console.error('モックデータの読み込みに失敗しました:', error);
+      }
     };
     
     loadMockData();

@@ -1,4 +1,4 @@
-import config from 'config';
+import { config } from '../config';
 import { ChatThread, Message } from '../types/chat';
 
 // LocalStorageのキー
@@ -9,40 +9,79 @@ async function loadThreadDataAsync(): Promise<ChatThread[]> {
   const threadData: ChatThread[] = [];
 
   try {
+    console.log('公開ディレクトリからのスレッドデータロードを開始します...');
+    
     // 1. 公開ディレクトリから利用可能なスレッドのインデックスを取得
     let threadFilenames: string[] = [];
-    try {
-      const indexResponse = await fetch('/mocks/data/threads-index.json');
-      if (indexResponse.ok) {
-        const indexData = await indexResponse.json();
-        threadFilenames = indexData.files || [];
-        console.log('公開ディレクトリからスレッドインデックスを読み込みました', threadFilenames);
-      } else {
-        console.warn('スレッドインデックスが見つかりません、ビルドインモックを使用します');
+    let indexLoaded = false;
+    
+    // インデックスファイルを読み込む試行回数を増やす
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (!indexLoaded && retryCount < maxRetries) {
+      try {
+        console.log(`スレッドインデックスの読み込みを試行中... (${retryCount + 1}/${maxRetries})`);
+        const indexResponse = await fetch('/mocks/data/threads-index.json', { 
+          cache: 'no-store',  // キャッシュを使わない
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        
+        if (indexResponse.ok) {
+          const indexData = await indexResponse.json();
+          threadFilenames = indexData.files || [];
+          console.log('公開ディレクトリからスレッドインデックスを読み込みました', threadFilenames);
+          indexLoaded = true;        } else {
+          console.warn(`スレッドインデックスの読み込みに失敗: HTTP ${indexResponse.status}`);
+          const currentRetry = retryCount;
+          retryCount++;
+          // 少し待機してから再試行
+          if (currentRetry < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 300 * currentRetry));
+          }
+        }      } catch (e) {
+        console.warn('スレッドインデックスの読み込み中にエラー:', e);
+        const currentRetry = retryCount;
+        retryCount++;
+        // 少し待機してから再試行
+        if (currentRetry < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 300 * currentRetry));
+        }
       }
-    } catch (e) {
-      console.warn('スレッドインデックスの読み込みに失敗しました:', e);
     }
 
     // 2. スレッドファイルが見つかった場合、それぞれを読み込む
     if (threadFilenames.length > 0) {
-      for (const filename of threadFilenames) {
+      const loadPromises = threadFilenames.map(async (filename) => {
         try {
-          const response = await fetch(`/mocks/data/${filename}`);
+          console.log(`スレッドファイル ${filename} の読み込みを試行中...`);
+          const response = await fetch(`/mocks/data/${filename}`, { 
+            cache: 'no-store',  // キャッシュを使わない
+            headers: { 'Cache-Control': 'no-cache' }
+          });
+          
           if (response.ok) {
             const module = await response.json();
             if (module && module.id && module.title && Array.isArray(module.messages)) {
-              threadData.push(module as ChatThread);
+              return module as ChatThread;
             } else {
               console.warn(`Invalid thread data format in file ${filename}:`, module);
+              return null;
             }
           } else {
-            console.warn(`スレッドファイル ${filename} の取得に失敗しました`);
+            console.warn(`スレッドファイル ${filename} の取得に失敗: HTTP ${response.status}`);
+            return null;
           }
         } catch (e) {
-          console.warn(`スレッドファイル ${filename} の読み込みに失敗しました:`, e);
+          console.warn(`スレッドファイル ${filename} の読み込みに失敗:`, e);
+          return null;
         }
-      }
+      });
+      
+      // 並列でファイルを読み込む
+      const loadResults = await Promise.all(loadPromises);
+      const validThreads = loadResults.filter(thread => thread !== null) as ChatThread[];
+      threadData.push(...validThreads);
     }
 
     // 3. 公開ディレクトリからデータが取得できた場合はそれを使用
@@ -157,11 +196,12 @@ let mockThreads: ChatThread[] = [];
 
 // モックデータを非同期的に初期化する関数
 async function initializeMockThreads(): Promise<void> {
+  console.log('モックスレッドデータの初期化を開始します...');
   // ブラウザ環境でのみLocalStorageを使用
   if (typeof window !== 'undefined' && window.localStorage) {
     // 1. まずLocalStorageからデータを読み込む（最優先）
     const storedThreads = loadThreadsFromStorage();
-    if (storedThreads) {
+    if (storedThreads && storedThreads.length > 0) {
       mockThreads = storedThreads;
       console.log('LocalStorageから', mockThreads.length, '個のスレッドデータを読み込みました');
       return;
@@ -169,21 +209,38 @@ async function initializeMockThreads(): Promise<void> {
     
     try {
       // 2. LocalStorageにデータがなければ公開ディレクトリから非同期に読み込む
+      console.log('公開ディレクトリからスレッドデータの読み込みを試みます...');
       const threads = await loadThreadDataAsync();
-      mockThreads = threads;
-      console.log('外部ソースから', mockThreads.length, '個のスレッドデータを読み込みました');
-      
-      // 3. 読み込んだデータをLocalStorageに保存
-      saveThreadsToStorage(mockThreads);
-      return;
+      if (threads && threads.length > 0) {
+        mockThreads = threads;
+        console.log('外部ソースから', mockThreads.length, '個のスレッドデータを読み込みました');
+        
+        // 3. 読み込んだデータをLocalStorageに保存
+        saveThreadsToStorage(mockThreads);
+        return;
+      } else {
+        console.warn('外部ソースからスレッドデータを読み込みましたが、有効なデータがありませんでした');
+      }
     } catch (e) {
       console.warn('外部データ読み込みに失敗しました:', e);
     }
   }
   
   // 4. 上記の方法が全て失敗した場合は、ビルドインのデータを使用
-  mockThreads = loadThreadData();
-  console.log('ビルトインソースから', mockThreads.length, '個のスレッドデータを読み込みました');
+  console.log('ビルトインデータからの読み込みを試みます...');
+  const builtInData = loadThreadData();
+  if (builtInData && builtInData.length > 0) {
+    mockThreads = builtInData;
+    console.log('ビルトインソースから', mockThreads.length, '個のスレッドデータを読み込みました');
+    
+    // ブラウザ環境であればこのデータもLocalStorageに保存
+    if (typeof window !== 'undefined' && window.localStorage) {
+      saveThreadsToStorage(mockThreads);
+    }
+    return;
+  }
+  
+  console.warn('すべてのデータソースからの読み込みが失敗しました。データがありません。');
 }
 
 // アプリケーション起動時にデータを初期化
@@ -194,13 +251,41 @@ initializeMockThreads().catch(e => {
 });
 
 // モックサービス
-const mockService = {
-  // スレッド一覧取得
+const mockService = {  // スレッド一覧取得
   getMockThreads: async (): Promise<ChatThread[]> => {
-    // データがまだ読み込まれていない場合は初期化が完了するまで少し待機
+    // データがまだ読み込まれていない場合は初期化を待機
     if (mockThreads.length === 0) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('スレッドデータがまだ読み込まれていません。初期化を待機します...');
+      // 初期化を再度実行して待機
+      try {
+        await initializeMockThreads();
+      } catch (e) {
+        console.error('モックデータの初期化中にエラーが発生しました:', e);
+        // それでも読み込めない場合はビルトインデータを使用
+        mockThreads = loadThreadData();
+      }
+      
+      // それでもデータがない場合は、サンプルのスレッドを作成
+      if (mockThreads.length === 0) {
+        console.warn('モックスレッドがありません。サンプルスレッドを作成します');
+        const sampleThread: ChatThread = {
+          id: `thread-${Date.now()}`,
+          title: 'サンプルチャット',
+          messages: [{
+            id: '1',
+            role: 'assistant',
+            content: 'こんにちは！何かお手伝いできることはありますか？',
+            timestamp: Date.now()
+          }],
+          lastUpdated: Date.now(),
+          isBookmarked: false,
+          isShared: false
+        };
+        mockThreads = [sampleThread];
+      }
     }
+    
+    console.log('スレッドデータを返します:', mockThreads.length, '件');
     return mockThreads;
   },
 
@@ -286,11 +371,45 @@ const mockService = {
 
     return mockThreads[threadIndex];
   },
-
   // レガシーモック履歴API（古いインタフェース互換性のため維持）
   getMockHistory: async () => {
+    // データが初期化されていない場合は初期化を試みる
+    if (mockThreads.length === 0) {
+      console.log('getMockHistory: スレッドがないため初期化を試みます...');
+      try {
+        await initializeMockThreads();
+      } catch (e) {
+        console.error('getMockHistory: モックデータの初期化中にエラーが発生しました:', e);
+        mockThreads = loadThreadData();
+      }
+        // それでもスレッドがない場合はサンプルスレッドを返す
+      if (mockThreads.length === 0) {
+        console.warn('getMockHistory: モックスレッドを作成します');
+        const sampleThread: ChatThread = {
+          id: `thread-${Date.now()}`,
+          title: 'サンプルチャット',
+          messages: [{
+            id: '1',
+            role: 'assistant',
+            content: 'こんにちは！何かお手伝いできることはありますか？',
+            timestamp: Date.now()
+          }],
+          lastUpdated: Date.now(),
+          isBookmarked: false,
+          isShared: false
+        };
+        mockThreads = [sampleThread];
+      }
+    }
+    
     // 最初のスレッドのメッセージを変換して返す
     const thread = mockThreads[0];
+    if (!thread || !thread.messages) {
+      console.error('getMockHistory: スレッドまたはメッセージが undefined です');
+      // 空の配列を返す
+      return [];
+    }
+    
     return thread.messages.map((msg, index) => ({
       id: String(index + 1),
       position: msg.role === 'user' ? 'right' : 'left',
