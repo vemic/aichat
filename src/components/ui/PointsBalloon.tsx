@@ -52,18 +52,17 @@ const PointsBalloon: React.FC = () => {
   // バルーンが表示されない場合は何も表示しない
   if (!animatingPoints.visible) {
     return null;
-  }  return (
-    <Box
+  }  return (    <Box
       sx={{
         position: 'fixed',
-        top: '16px',
-        right: '16px',
+        bottom: '16px',
+        left: '16px',
         zIndex: 9999,
         animation: 'slideIn 0.3s ease-out forwards, fadeOut 0.5s ease-out 1.5s forwards',
         filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))',
         maxWidth: '250px',
         '@keyframes slideIn': {
-          '0%': { opacity: 0, transform: 'translateY(-10px)' },
+          '0%': { opacity: 0, transform: 'translateY(10px)' },
           '100%': { opacity: 1, transform: 'translateY(0)' }
         },
         '@keyframes fadeOut': {

@@ -662,14 +662,12 @@ const MainContent: React.FC = () => {
         onClose={() => setFeedbackDialogOpen(false)}
         messageId={selectedMessageId}
         onSubmit={handleFeedbackSubmit}
-      />
-
-      {/* スナックバー通知 */}
+      />      {/* スナックバー通知 */}
       <Snackbar 
         open={snackbarOpen} 
         autoHideDuration={4000} 
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert 
           onClose={handleCloseSnackbar} 
