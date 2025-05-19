@@ -398,28 +398,86 @@ const MainContent: React.FC = () => {
   };
 
   // チャット開始日時
-  const chatStartDate = messages.length > 0 ? new Date(messages[0].timestamp) : new Date();
-
+  const chatStartDate = messages.length > 0 ? new Date(messages[0].timestamp) : new Date();  // コンテンツ幅とフォントサイズの設定
+  const { contentWidth, chatFontSize } = useTheme();
+  
+  // コンテンツ幅の値をピクセルに変換
+  const getContentMaxWidth = () => {
+    switch(contentWidth) {
+      case 'narrow': return '700px';
+      case 'medium': return '900px';  // デフォルト値を広げた
+      case 'wide': return '1100px';
+      default: return '900px';
+    }
+  };
+    // チャットの文字サイズの値をremに変換
+  const getChatFontSize = () => {
+    switch(chatFontSize) {
+      case 'small': return '0.8rem';
+      case 'medium': return '0.9rem';  // ミディアムサイズを小さくする
+      case 'large': return '1.05rem';
+      default: return '0.9rem';
+    }
+  };
+  
+  // フォントサイズに応じた行間を取得
+  const getLineHeight = () => {
+    switch(chatFontSize) {
+      case 'small': return 1.4;  // 小さいサイズでは行間も狭く
+      case 'medium': return 1.5;
+      case 'large': return 1.6;  // 大きいサイズでは行間も広く
+      default: return 1.5;
+    }
+  };
+  
+  // フォントサイズに応じた余白サイズを取得
+  const getMessageSpacing = () => {
+    switch(chatFontSize) {
+      case 'small': return { py: 1.5, paragraphMargin: 1 }; // 小さいフォントでは余白も小さく
+      case 'medium': return { py: 2, paragraphMargin: 1.5 };
+      case 'large': return { py: 2.5, paragraphMargin: 2 };
+      default: return { py: 2, paragraphMargin: 1.5 };
+    }
+  };
+  
   return (
-    <Box sx={{ 
-      width: '100%', 
-      height: '100%', 
-      display: 'flex', 
-      flexDirection: 'column',
-      fontFamily: 'Meiryo UI, Meiryo, "Segoe UI", "Hiragino Kaku Gothic ProN", Arial, sans-serif'
-    }}>
+    <Box
+      className="main-content"
+      sx={{
+        flex: 1,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        height: '100%',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
+        pt: { xs: 1, sm: 2, md: 3 },
+        pl: { xs: 1, sm: 2, md: 3 },
+        pr: { xs: 1, sm: 2, md: 3 },
+        pb: 0,
+        fontSize: getChatFontSize(), // チャット全体のフォントサイズを設定
+      }}
+    >
       <Box sx={{ 
         p: 2, 
         borderBottom: `1px solid ${mode === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)'}`, 
         display: 'flex', 
         flexDirection: 'column',
+        bgcolor: 'background.paper',
+        borderTopLeftRadius: 6,
+        borderTopRightRadius: 6,
+        maxWidth: getContentMaxWidth(), // コンテンツ幅を動的に設定
+        width: '100%',
+        margin: '0 auto',
+        boxSizing: 'border-box',
       }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6" sx={{ fontWeight: 600, fontSize: 18 }}>
-            {activeThread?.title || t('New Chat')}
-          </Typography>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>            <Tooltip title={activeThread?.isBookmarked ? t('Remove from bookmarks') : t('Add to bookmarks')}>
+            {activeThread?.title || t('New Chat')}          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>            
+            <Tooltip title={activeThread?.isBookmarked ? t('Remove from bookmarks') : t('Add to bookmarks')}>
               <IconButton 
                 size="small" 
                 onClick={handleToggleBookmark} 
@@ -428,7 +486,6 @@ const MainContent: React.FC = () => {
                 {activeThread?.isBookmarked ? <StarIcon /> : <StarBorderIcon />}
               </IconButton>
             </Tooltip>
-            
             <Tooltip title={t('Export thread as JSON')}>
               <IconButton size="small" onClick={handleExportJSON}>
                 <DownloadIcon />
@@ -446,42 +503,40 @@ const MainContent: React.FC = () => {
         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
           {format(chatStartDate, 'yyyy/MM/dd HH:mm')} · {messages.length} {t('messages')}
         </Typography>
-      </Box>
-
-      <Paper 
+      </Box>      <Paper 
         ref={scrollRef} 
         elevation={0}
         sx={{ 
-          flex: 1, 
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
           overflowY: 'auto', 
           bgcolor: 'background.paper',
           p: 0,
-          '&::-webkit-scrollbar': {
-            width: '8px',
-          },
-          '&::-webkit-scrollbar-track': {
-            background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-            borderRadius: '4px',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            background: mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
-            borderRadius: '4px',
-            '&:hover': {
-              background: mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
-            },
-          }
+          maxWidth: getContentMaxWidth(),
+          margin: '0 auto',
+          width: '100%',
+          minWidth: 0,
+          minHeight: 0, // Add this line
+          boxSizing: 'border-box',
+          borderRadius: 0,
         }}
-      >
-        {messages.map((msg) => (
+      >        {messages.map((msg: any) => (
           <Box 
             key={msg.id} 
             sx={{ 
-              py: 2, 
+              py: getMessageSpacing().py, // フォントサイズに応じて上下パディングを調整
               px: 3,
-              bgcolor: (theme) => msg.role === 'assistant' ? 
+              bgcolor: (theme: any) => msg.role === 'assistant' ? 
                 (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)') : 
                 'transparent',
-              borderBottom: (theme) => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)'}`
+              borderBottom: (theme: any) => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)'}`,
+              wordBreak: 'break-word',
+              overflowWrap: 'break-word',
+              maxWidth: '100%',
+              minWidth: 0,
+              width: '100%',
+              boxSizing: 'border-box',
             }}
           >
             <Box sx={{ 
@@ -503,8 +558,7 @@ const MainContent: React.FC = () => {
                 {msg.role === 'user' ? 'G' : <SmartToyIcon />}
               </Avatar>
 
-              <Box sx={{ flex: 1 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+              <Box sx={{ flex: 1 }}>                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
                   <Typography 
                     variant="caption" 
                     color="text.secondary" 
@@ -512,49 +566,48 @@ const MainContent: React.FC = () => {
                   >
                     {msg.role === 'user' ? t('You') : t('AI')}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {format(new Date(msg.timestamp), 'yyyy/MM/dd HH:mm')}
-                  </Typography>
-                </Box>
-                <Box sx={{ 
-                  fontSize: '0.95rem',
-                  '& p': { mb: 1.5 },
-                  '& ul, & ol': { pl: 2.5, mb: 1.5 },
-                  '& li': { mb: 0.5 },
-                  '& pre': { mb: 2 },
-                  '& h1, & h2, & h3, & h4, & h5, & h6': {
-                    mt: 2,
-                    mb: 1,
-                    fontWeight: 600,
-                    lineHeight: 1.3,
-                  },
-                  '& a': {
-                    color: 'primary.main',
-                    textDecoration: 'none',
-                    '&:hover': {
-                      textDecoration: 'underline',
-                    }
+                  {/* 日時の重複表示を修正（下部分のみに表示） */}
+                </Box>                <Box sx={{ 
+                  fontSize: 'inherit', // 親コンポーネントから継承
+                  lineHeight: getLineHeight(), // フォントサイズに応じた行間を設定
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  '& p': { mb: getMessageSpacing().paragraphMargin }, // フォントサイズに応じた段落間の余白
+                  '& ul, & ol': { pl: chatFontSize === 'small' ? 2 : 2.5, mb: getMessageSpacing().paragraphMargin },
+                  '& li': { mb: chatFontSize === 'small' ? 0.3 : 0.5 },
+                  '& pre': { 
+                    mb: chatFontSize === 'small' ? 1.5 : 2, 
+                    whiteSpace: 'pre-wrap', 
+                    wordBreak: 'break-word', 
+                    overflowX: 'auto', 
+                    maxWidth: '100%', 
+                    minWidth: 0, 
+                    width: '100%', 
+                    boxSizing: 'border-box' 
                   },
                   '& code:not(pre *)': {
-                    px: 0.8,
-                    py: 0.3,
+                    px: chatFontSize === 'small' ? 0.6 : 0.8,
+                    py: chatFontSize === 'small' ? 0.2 : 0.3,
                     mx: 0.2,
                     borderRadius: 1,
-                    fontSize: '0.85em',
+                    fontSize: '0.85em', // emを使用して相対サイズ指定
                     fontFamily: 'Consolas, Monaco, "Andale Mono", monospace',
                     bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
                     color: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.9)' : 'inherit',
+                    wordBreak: 'break-word',
                   },
                 }}>
                   <ReactMarkdown components={components}>{msg.content}</ReactMarkdown>
-                </Box>
-
-                {msg.role === 'user' ? (
+                </Box>                {msg.role === 'user' ? (
                   <Box sx={{ 
                     display: 'flex', 
                     justifyContent: 'space-between', 
                     alignItems: 'center', 
-                    mt: 1.5,
+                    mt: chatFontSize === 'small' ? 1 : 1.5, // フォントサイズが小さい場合は余白も小さく
                     color: 'text.secondary'
                   }}>
                     <Typography variant="caption">
@@ -588,8 +641,18 @@ const MainContent: React.FC = () => {
           </Box>
         ))}
       </Paper>
-
-      <Box sx={{ p: 2, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
+      <Box sx={{        flexShrink: 0,
+        p: 2,
+        borderTop: '1px solid rgba(0, 0, 0, 0.12)',
+        bgcolor: 'background.paper',
+        // borderBottomLeftRadius, borderBottomRightRadius の重複を削除
+        borderRadius: '0 0 6px 6px',
+        maxWidth: getContentMaxWidth(),
+        width: '100%',
+        margin: '0 auto',
+        boxSizing: 'border-box',
+        mb: 0,
+      }}>
         <ChatInput onSendMessage={handleSendMessage} />
       </Box>
 
