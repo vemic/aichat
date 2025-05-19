@@ -46,7 +46,17 @@ const resources = {
       'Regenerate response': '回答を再生成',
       'Download': 'ダウンロード',
       'Copy': 'コピー',
-      'Feedback': 'フィードバック'
+      'Feedback': 'フィードバック',
+      
+      // ポイント関連の翻訳追加
+      'You earned 1 point for sending a message': 'メッセージ送信で1ポイント獲得しました',
+      'You earned 2 points for providing feedback': 'フィードバック提供で2ポイント獲得しました',
+      'You earned 5 points for logging in': 'ログインで5ポイント獲得しました',
+      'You earned 50 points for signing up': '新規登録で50ポイント獲得しました',
+      'You earned 3 points daily bonus': '毎日のボーナスで3ポイント獲得しました',
+      'Points': 'ポイント',
+      'No notifications': 'お知らせはありません',
+      'Notifications': 'お知らせ'
     }
   },
   en: {
