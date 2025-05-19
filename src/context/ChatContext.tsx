@@ -37,12 +37,23 @@ interface ChatProviderProps {
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-
   // 初期化時にモックデータを読み込む
   useEffect(() => {
     const loadMockData = async () => {
-      if (getMockHistory) {
-        try {
+      try {
+        // 新しいモックAPIを使用（すべてのスレッドをJSONから読み込む）
+        if (api.getMockThreads) {
+          const mockThreads = await api.getMockThreads();
+          if (mockThreads && mockThreads.length > 0) {
+            setThreads(mockThreads);
+            // 最初のスレッドをアクティブに設定
+            setActiveThreadId(mockThreads[0].id);
+            return;
+          }
+        }
+        
+        // フォールバック: 古いメソッドを使用
+        if (getMockHistory) {
           const mockHistory = await getMockHistory();
           
           // モックデータから最初のスレッドを作成
@@ -53,9 +64,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             timestamp: msg.date ? new Date(msg.date).getTime() : Date.now(),
           }));
           
-          const mockThreadId = 'thread-' + Date.now();          const mockThread: ChatThread = {
+          const mockThreadId = 'thread-' + Date.now();
+          const mockThread: ChatThread = {
             id: mockThreadId,
-            title: mockMessages[0]?.content?.substring(0, 30) + '...' || 'New Chat',
+            title: mockMessages[0]?.content?.substring(0, 30) + '...' || '新しいチャット',
             messages: mockMessages,
             lastUpdated: Date.now(),
             isBookmarked: false,
@@ -64,29 +76,56 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           
           setThreads([mockThread]);
           setActiveThreadId(mockThreadId);
-        } catch (error) {
-          console.error('モックデータの読み込みに失敗しました:', error);
         }
+      } catch (error) {
+        console.error('モックデータの読み込みに失敗しました:', error);
       }
     };
     
     loadMockData();
   }, []);
-
   // 新しいスレッドを作成
   const createThread = async (title?: string): Promise<string> => {
-    const newThreadId = 'thread-' + Date.now();    const newThread: ChatThread = {
-      id: newThreadId,
-      title: title || '新しいチャット',
-      messages: [],
-      lastUpdated: Date.now(),
-      isBookmarked: false,
-      isShared: false
-    };
-    
-    setThreads(prev => [...prev, newThread]);
-    setActiveThreadId(newThreadId);
-    return newThreadId;
+    try {
+      if (api.createThread) {
+        // APIを使用して新しいスレッドを作成
+        const newThread = await api.createThread(title || '新しいチャット');
+        setThreads(prev => [...prev, newThread]);
+        setActiveThreadId(newThread.id);
+        return newThread.id;
+      } else {
+        // フォールバック: ローカルで作成
+        const newThreadId = 'thread-' + Date.now();
+        const newThread: ChatThread = {
+          id: newThreadId,
+          title: title || '新しいチャット',
+          messages: [],
+          lastUpdated: Date.now(),
+          isBookmarked: false,
+          isShared: false
+        };
+        
+        setThreads(prev => [...prev, newThread]);
+        setActiveThreadId(newThreadId);
+        return newThreadId;
+      }
+    } catch (error) {
+      console.error('スレッド作成エラー:', error);
+      // エラー時はローカルで作成
+      const newThreadId = 'thread-' + Date.now();
+      const newThread: ChatThread = {
+        id: newThreadId,
+        title: title || '新しいチャット',
+        messages: [],
+        lastUpdated: Date.now(),
+        isBookmarked: false,
+        isShared: false
+      };
+      
+      setThreads(prev => [...prev, newThread]);
+      setActiveThreadId(newThreadId);
+      return newThreadId;
+    }
   };
 
   // スレッドにメッセージを追加
@@ -127,37 +166,55 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       })
     );
   };
-
   // スレッド共有
   const shareThread = async (threadId: string): Promise<ThreadShare> => {
-    // 実際の実装ではAPIを呼び出す
-    // モック実装
-    const shareId = `share-${Math.random().toString(36).substring(2, 9)}`;
-    const shareData: ThreadShare = {
-      threadId,
-      shareId,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 1週間後
-      url: `https://aichat.example.com/share/${shareId}`
-    };
-    
-    // スレッドを共有状態に更新
-    setThreads(prevThreads => 
-      prevThreads.map(thread => {
-        if (thread.id === threadId) {
-          return {
-            ...thread,
-            isShared: true,
-            shareUrl: shareData.url
-          };
-        }
-        return thread;
-      })
-    );
-    
-    return shareData;
+    try {
+      // APIを使用してスレッドを共有
+      const shareData = await api.shareThread(threadId);
+      
+      // スレッドを共有状態に更新
+      setThreads(prevThreads => 
+        prevThreads.map(thread => {
+          if (thread.id === threadId) {
+            return {
+              ...thread,
+              isShared: true,
+              shareUrl: shareData.url
+            };
+          }
+          return thread;
+        })
+      );
+      
+      return shareData;
+    } catch (error) {
+      console.error('スレッド共有エラー:', error);
+      // エラー時のフォールバック
+      const shareId = `share-${Math.random().toString(36).substring(2, 9)}`;
+      const fallbackShareData: ThreadShare = {
+        threadId,
+        shareId,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 1週間後
+        url: `https://aichat.example.com/share/${shareId}`
+      };
+      
+      setThreads(prevThreads => 
+        prevThreads.map(thread => {
+          if (thread.id === threadId) {
+            return {
+              ...thread,
+              isShared: true,
+              shareUrl: fallbackShareData.url
+            };
+          }
+          return thread;
+        })
+      );
+      
+      return fallbackShareData;
+    }
   };
-
   // メッセージ再生成
   const regenerateMessage = async (threadId: string, messageId: string): Promise<void> => {
     // 現在のスレッドとメッセージを取得
@@ -171,44 +228,71 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     // 対象メッセージとその直前のメッセージを取得
     const targetMessage = thread.messages[messageIndex];
     
-    // AIメッセージを再生成するケース（ユーザーメッセージから再生成）
-    if (targetMessage.role === 'user') {
-      try {
-        const response = await api.sendMessage(targetMessage.content);
-        
-        // 新しいメッセージを追加
-        const newMessage: Message = {
+    try {
+      let newMessage: Message;
+      
+      if (targetMessage.role === 'user') {
+        // ユーザーメッセージの場合、新しいAI応答を生成
+        const response = await api.sendMessage(targetMessage.content, threadId);
+        newMessage = {
           id: `regenerated-${Date.now()}`,
           role: 'assistant',
-          content: (response as any).content,
+          content: response.content,
           timestamp: Date.now()
         };
+      } else {
+        // AI応答メッセージを再生成
+        const prevUserMessage = messageIndex > 0 ? thread.messages[messageIndex - 1] : null;
         
-        // スレッドを更新
-        setThreads(prevThreads => 
-          prevThreads.map(t => {
-            if (t.id === threadId) {
-              const updatedMessages = [...t.messages];
-              // 既存のAIレスポンスがある場合は置き換え、なければ追加
+        // 前のユーザーメッセージがあればそれを使用、なければ空文字
+        const userContent = prevUserMessage && prevUserMessage.role === 'user' 
+          ? prevUserMessage.content 
+          : 'コンテキストなし';
+          
+        // APIのregenrateMessageを使用
+        if (api.regenerateMessage) {
+          newMessage = await api.regenerateMessage(threadId, messageId);
+        } else {
+          // フォールバック: 通常のsendMessageを使用
+          const response = await api.sendMessage(userContent, threadId);
+          newMessage = {
+            id: `regenerated-${Date.now()}`,
+            role: 'assistant',
+            content: response.content,
+            timestamp: Date.now()
+          };
+        }
+      }
+      
+      // スレッドを更新
+      setThreads(prevThreads => 
+        prevThreads.map(t => {
+          if (t.id === threadId) {
+            const updatedMessages = [...t.messages];
+            
+            if (targetMessage.role === 'user') {
+              // ユーザーメッセージの後に回答を追加/置換
               if (messageIndex + 1 < updatedMessages.length && updatedMessages[messageIndex + 1].role === 'assistant') {
                 updatedMessages[messageIndex + 1] = newMessage;
               } else {
                 updatedMessages.push(newMessage);
               }
-              
-              return {
-                ...t,
-                messages: updatedMessages,
-                lastUpdated: Date.now()
-              };
+            } else {
+              // AI応答そのものを置き換え
+              updatedMessages[messageIndex] = newMessage;
             }
-            return t;
-          })
-        );
-      } catch (error) {
-        console.error('メッセージの再生成に失敗しました:', error);
-        throw error;
-      }
+            
+            return {
+              ...t,
+              messages: updatedMessages,
+              lastUpdated: Date.now()
+            };
+          }
+          return t;
+        })
+      );    } catch (error) {
+      console.error('メッセージの再生成に失敗しました:', error);
+      throw error;
     }
   };
   // スレッドをJSONとしてエクスポート

@@ -1,14 +1,27 @@
 import React, { createContext, useState, useEffect, useMemo, useContext, ReactNode } from 'react';
 import { ThemeProvider as MUIThemeProvider, createTheme, PaletteMode } from '@mui/material';
 
+// コンテンツ幅の設定タイプ
+export type ContentWidthType = 'narrow' | 'medium' | 'wide';
+// チャットフォントサイズの設定タイプ
+export type ChatFontSizeType = 'small' | 'medium' | 'large';
+
 type ThemeContextType = {
   mode: PaletteMode;
   toggleColorMode: () => void;
+  contentWidth: ContentWidthType;
+  setContentWidth: (width: ContentWidthType) => void;
+  chatFontSize: ChatFontSizeType;
+  setChatFontSize: (size: ChatFontSizeType) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType>({
   mode: 'light',
   toggleColorMode: () => {},
+  contentWidth: 'medium',
+  setContentWidth: () => {},
+  chatFontSize: 'medium',
+  setChatFontSize: () => {},
 });
 
 export const useTheme = () => useContext(ThemeContext);
@@ -24,9 +37,30 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     return (savedMode === 'dark' || savedMode === 'light') ? savedMode : 'light';
   });
 
+  // コンテンツ幅の設定
+  const [contentWidth, setContentWidth] = useState<ContentWidthType>(() => {
+    const savedWidth = localStorage.getItem('contentWidth');
+    return (savedWidth === 'narrow' || savedWidth === 'medium' || savedWidth === 'wide') ? 
+      savedWidth as ContentWidthType : 'medium';
+  });
+  // チャットフォントサイズの設定
+  const [chatFontSize, setChatFontSize] = useState<ChatFontSizeType>(() => {
+    const savedSize = localStorage.getItem('chatFontSize');
+    return (savedSize === 'small' || savedSize === 'medium' || savedSize === 'large') ? 
+      savedSize as ChatFontSizeType : 'medium'; // デフォルトを'medium'に設定
+  });
+
   useEffect(() => {
     localStorage.setItem('themeMode', mode);
   }, [mode]);
+
+  useEffect(() => {
+    localStorage.setItem('contentWidth', contentWidth);
+  }, [contentWidth]);
+
+  useEffect(() => {
+    localStorage.setItem('chatFontSize', chatFontSize);
+  }, [chatFontSize]);
 
   const colorMode = useMemo(
     () => ({
@@ -34,8 +68,16 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       toggleColorMode: () => {
         setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
       },
+      contentWidth,
+      setContentWidth: (width: ContentWidthType) => {
+        setContentWidth(width);
+      },
+      chatFontSize,
+      setChatFontSize: (size: ChatFontSizeType) => {
+        setChatFontSize(size);
+      }
     }),
-    [mode]
+    [mode, contentWidth, chatFontSize]
   );
 
   // テーマ設定
