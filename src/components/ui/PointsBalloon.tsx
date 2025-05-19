@@ -41,7 +41,16 @@ const PointsBalloon: React.FC = () => {
   }, [recentEvents]);
   
   // タイマー参照を保持
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const animationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const fadeOutTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // コンポーネントのアンマウント時にタイマーをクリア
+  useEffect(() => {
+    return () => {
+      if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
+      if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
+    };
+  }, []);
   
   // 初期ロードを処理する効果
   useEffect(() => {
@@ -87,25 +96,22 @@ const PointsBalloon: React.FC = () => {
         visible: true
       });
       
-      // アニメーション時間に合わせて、表示を終了（slideIn + fadeOut = 0.3s + 1.5s + 0.5s = 2.3s）
-      timerRef.current = setTimeout(() => {
-        // アニメーション表示を終了
-        setAnimatingPoints(prev => ({ ...prev, visible: false }));
-        
-        // 処理済みの通知をキューから削除
-        setNotificationQueue(prev => prev.slice(1));
-        
-        // アニメーション状態を終了（少し遅延させて、CSSアニメーションが完了するのを待つ）
-        setTimeout(() => {
-          setIsAnimating(false);
-        }, 200);
-      }, 2300);
-      
-      return () => {
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-        }
-      };
+      // アニメーション完了後に状態をリセット（slideIn + 表示期間 = 0.3s + 1.5s = 1.8s）
+      animationTimerRef.current = setTimeout(() => {
+        // fadeOutアニメーション開始
+        fadeOutTimerRef.current = setTimeout(() => {
+          // アニメーション表示を終了
+          setAnimatingPoints(prev => ({ ...prev, visible: false }));
+          
+          // 処理済みの通知をキューから削除
+          setNotificationQueue(prev => prev.slice(1));
+          
+          // アニメーション状態を終了（CSSアニメーションが完了するのを待つ）
+          setTimeout(() => {
+            setIsAnimating(false);
+          }, 100);
+        }, 1800); // slideInとメッセージ表示時間
+      }, 0);
     }
   }, [notificationQueue, isAnimating]);
 
@@ -121,7 +127,7 @@ const PointsBalloon: React.FC = () => {
         bottom: '16px',
         left: '16px',
         zIndex: 9999,
-        animation: 'slideIn 0.3s ease-out forwards, fadeOut 0.5s ease-out 1.5s forwards',
+        animation: 'slideIn 0.3s ease-out forwards, fadeOut 0.5s ease-out 1.8s forwards',
         filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))',
         maxWidth: '250px',
         '@keyframes slideIn': {
@@ -133,7 +139,8 @@ const PointsBalloon: React.FC = () => {
           '100%': { opacity: 0 }
         }
       }}
-    ><Box
+    >
+      <Box
         sx={{
           display: 'flex',
           bgcolor: 'rgba(129, 199, 132, 0.1)',  // さらに薄い緑色

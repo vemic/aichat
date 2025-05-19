@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {   
   Box, Tooltip, Badge, Fab, Typography, Modal, 
   Paper, List, ListItem, ListItemText, IconButton,
@@ -13,142 +13,37 @@ import { useTheme } from '../../context/ThemeContext';
 
 const PointsIndicator: React.FC = () => {
   const { t } = useTranslation();
-  const { mode } = useTheme();  const { 
+  const { mode } = useTheme();
+  const { 
     totalPoints, 
-    recentEvents, 
-    indicatorPosition, 
-    updateIndicatorPosition 
+    recentEvents
   } = usePoints();
   
   const [open, setOpen] = useState(false);
-  const [animatingPoints, setAnimatingPoints] = useState<{points: number, visible: boolean}>({
-    points: 0,
-    visible: false
-  });
-  
-  // ドラッグ状態の管理
-  const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState(indicatorPosition);
-  const indicatorRef = useRef<HTMLDivElement>(null);
-  const dragOffsetRef = useRef({ x: 0, y: 0 });
-  // マウスの移動距離を追跡するための状態を追加
-  const startPosRef = useRef({ x: 0, y: 0 });
-  // 移動距離の閾値（この値以上移動したらドラッグと判定）
-  const DRAG_THRESHOLD = 3;
-    
-  // コンポーネント初期表示時に保存されたポジションを適用
-  useEffect(() => {
-    // ポジションが設定されていない（初期値の0,0）場合は、
-    // デフォルトで右下に配置
-    if (indicatorPosition.x === 0 && indicatorPosition.y === 0) {
-      // 画面の右下に配置（少し余白を持たせる）
-      const defaultX = window.innerWidth - 80;
-      const defaultY = window.innerHeight - 100;
-      setPosition({ x: defaultX, y: defaultY });
-      // 初期設定をコンテキストに保存
-      updateIndicatorPosition({ x: defaultX, y: defaultY });
-    } else {
-      setPosition(indicatorPosition);
-    }
-  }, [indicatorPosition, updateIndicatorPosition]);
   
   // ポイント通知機能は別なので、緑のポツを表示しない
   const hasRecentPoints = false;
   
   // 最新イベントIDを追跡して新しいポイントが追加されたことを検出
   const [lastProcessedEventId, setLastProcessedEventId] = useState<string | null>(null);
-  // 最新イベントの情報を抽出して依存配列に使用するための値を作成
+  // 最新イベントの情報を抽出
   const latestEvent = recentEvents.length > 0 ? recentEvents[0] : null;
-  const latestEventId = latestEvent?.id;
-    
+  
   // このコンポーネントではポイント通知アニメーションは表示しない
   // PointsBalloonコンポーネントが通知を担当する
-  React.useEffect(() => {
+  useEffect(() => {
     // 最新イベントがあり、まだ処理していないIDの場合はIDを記録するだけ
     if (latestEvent && latestEvent.id !== lastProcessedEventId) {
       // 最新のポイント獲得イベントのIDを記録
       setLastProcessedEventId(latestEvent.id);
     }
-  }, [latestEvent, latestEventId, lastProcessedEventId]);
+  }, [latestEvent, lastProcessedEventId]);
   
   const handleOpen = () => {
-    // クリック操作と判定された場合のみダイアログを開く
-    if (!isDragging) {
-      console.log('ポイントダイアログを開く');
-      setOpen(true);
-    }
+    setOpen(true);
   };
   
   const handleClose = () => setOpen(false);
-
-  // ドラッグ開始処理
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    if (indicatorRef.current) {
-      const rect = indicatorRef.current.getBoundingClientRect();
-      dragOffsetRef.current = {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      };
-      // マウスダウン位置を記録
-      startPosRef.current = {
-        x: e.clientX,
-        y: e.clientY
-      };
-      // この時点ではドラッグを開始していないのでfalseに設定
-      setIsDragging(false);
-      
-      // ドラッグ中のイベントをウィンドウに登録
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-  };
-  
-  // ドラッグ中処理
-  const handleMouseMove = (e: MouseEvent) => {
-    // 移動距離を計算
-    const moveX = Math.abs(e.clientX - startPosRef.current.x);
-    const moveY = Math.abs(e.clientY - startPosRef.current.y);
-    
-    // 閾値を超える移動があった場合、ドラッグ状態にする
-    if (moveX > DRAG_THRESHOLD || moveY > DRAG_THRESHOLD) {
-      setIsDragging(true);
-    }
-    
-    // ドラッグ状態の場合のみ位置を更新
-    if (isDragging) {
-      // 画面外に出ないように制限を設定
-      const newX = Math.max(0, Math.min(window.innerWidth - 60, e.clientX - dragOffsetRef.current.x));
-      const newY = Math.max(0, Math.min(window.innerHeight - 70, e.clientY - dragOffsetRef.current.y));
-      
-      setPosition({
-        x: newX,
-        y: newY
-      });
-    }
-  };
-  
-  // ドラッグ終了処理
-  const handleMouseUp = (e: MouseEvent) => {
-    // 移動距離を計算
-    const moveX = Math.abs(e.clientX - startPosRef.current.x);
-    const moveY = Math.abs(e.clientY - startPosRef.current.y);
-    
-    // イベントリスナーを削除
-    window.removeEventListener('mousemove', handleMouseMove);
-    window.removeEventListener('mouseup', handleMouseUp);
-    
-    // ドラッグ操作だった場合はドラッグ位置を保存
-    if (isDragging) {
-      updateIndicatorPosition(position);
-    } else if (moveX <= DRAG_THRESHOLD && moveY <= DRAG_THRESHOLD) {
-      // 小さい移動でドラッグ状態でなければクリックイベントを処理
-      handleOpen();
-    }
-    
-    // ドラッグ状態をリセット
-    setIsDragging(false);
-  };
 
   // ポイント獲得方法の説明
   const pointsRules = [
@@ -161,84 +56,16 @@ const PointsIndicator: React.FC = () => {
 
   return (
     <Box 
-      ref={indicatorRef}
       sx={{ 
         position: 'fixed', 
         zIndex: 1000,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        cursor: isDragging ? 'grabbing' : 'grab',
-        left: position.x,
-        top: position.y,
-        userSelect: 'none',
-        touchAction: 'none'
+        bottom: '16px',
+        right: '16px'
       }}
-      onMouseDown={handleMouseDown}
     >
-      {/* ポイント獲得時のアニメーション表示 */}
-      {animatingPoints.visible && (
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: '100%',
-            right: '0',
-            mb: 1,
-            zIndex: 9999, // より前面に表示
-            animation: 'floatUp 3s ease-out forwards, bounce 0.5s ease-in-out alternate 6',
-            filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.2))',
-            '@keyframes floatUp': {
-              '0%': { opacity: 0, transform: 'translateY(10px) scale(0.8)' },
-              '10%': { opacity: 1, transform: 'translateY(0) scale(1.1)' },
-              '20%': { transform: 'scale(1)' },
-              '80%': { opacity: 1 },
-              '100%': { opacity: 0, transform: 'translateY(-40px) scale(0.9)' }
-            },
-            '@keyframes bounce': {
-              '0%': { transform: 'scale(1) translateY(0)' },
-              '100%': { transform: 'scale(1.2) translateY(-5px)' }
-            }
-          }}
-        >
-          <Typography
-            sx={{
-              bgcolor: 'success.main',
-              color: 'white',
-              px: 2.5,
-              py: 1,
-              borderRadius: 10,
-              fontWeight: 'bold',
-              fontSize: '1rem',
-              display: 'flex',
-              alignItems: 'center',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 2px rgba(255, 255, 255, 0.2) inset',
-              whiteSpace: 'nowrap',
-              border: '2px solid rgba(255, 255, 255, 0.5)',
-              animation: 'glow 1.5s ease-in-out infinite alternate',
-              '@keyframes glow': {
-                '0%': { boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 2px rgba(255, 255, 255, 0.2) inset' },
-                '100%': { boxShadow: '0 4px 25px rgba(76, 175, 80, 0.4), 0 0 0 2px rgba(255, 255, 255, 0.6) inset' }
-              },
-              '&::after': {
-                content: '""',
-                position: 'absolute',
-                bottom: -10,
-                right: 15,
-                width: 0,
-                height: 0,
-                borderLeft: '10px solid transparent',
-                borderRight: '10px solid transparent',
-                borderTop: '10px solid',
-                borderTopColor: 'success.main',
-              }
-            }}
-          >
-            <StarIcon sx={{ mr: 1, fontSize: '1.3rem', color: 'yellow', filter: 'drop-shadow(0 0 3px rgba(255,255,0,0.5))' }} />
-            +{animatingPoints.points} {t('ポイント')}
-          </Typography>
-        </Box>
-      )}
-      
       <Tooltip title={t('AIChatポイント')} placement="left">
         <Badge
           overlap="circular"
@@ -306,7 +133,8 @@ const PointsIndicator: React.FC = () => {
       >
         <Paper
           sx={{
-            position: 'absolute',            top: '50%',
+            position: 'absolute',
+            top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
             width: { xs: '92%', sm: 700, md: 900 },
@@ -337,8 +165,9 @@ const PointsIndicator: React.FC = () => {
               <CloseIcon fontSize="small" />
             </IconButton>
           </Box>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, height: '60vh', overflow: 'hidden' }}>
-            {/* ポイント履歴リスト */}          <Box sx={{ 
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, height: '100%', overflow: 'hidden' }}>
+            {/* ポイント履歴リスト */}
+            <Box sx={{ 
               flex: 1, 
               p: 0,
               height: '100%',

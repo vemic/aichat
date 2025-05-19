@@ -10,32 +10,22 @@ type PointEvent = {
   read: boolean;
 };
 
-// インジケータの位置情報の型
-type IndicatorPosition = {
-  x: number;
-  y: number;
-};
-
 type PointsContextType = {
   totalPoints: number;
   recentEvents: PointEvent[];
   unreadCount: number;
-  indicatorPosition: IndicatorPosition;
   addPoints: (event: Omit<PointEvent, 'id' | 'timestamp' | 'read'>) => void;
   markAllAsRead: () => void;
   markAsRead: (id: string) => void;
-  updateIndicatorPosition: (position: IndicatorPosition) => void;
 };
 
 const PointsContext = createContext<PointsContextType>({
   totalPoints: 0,
   recentEvents: [],
   unreadCount: 0,
-  indicatorPosition: { x: 0, y: 0 },
   addPoints: () => {},
   markAllAsRead: () => {},
   markAsRead: () => {},
-  updateIndicatorPosition: () => {},
 });
 
 export const usePoints = () => useContext(PointsContext);
@@ -65,12 +55,6 @@ export const PointsProvider: React.FC<PointsProviderProps> = ({ children }) => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // インジケータの位置をローカルストレージから読み込む
-  const [indicatorPosition, setIndicatorPosition] = useState<IndicatorPosition>(() => {
-    const saved = localStorage.getItem('indicatorPosition');
-    return saved ? JSON.parse(saved) : { x: 0, y: 0 };
-  });
-
   // 未読のポイントイベント数
   const unreadCount = recentEvents.filter(event => !event.read).length;
 
@@ -79,11 +63,8 @@ export const PointsProvider: React.FC<PointsProviderProps> = ({ children }) => {
     localStorage.setItem('totalPoints', totalPoints.toString());
     localStorage.setItem('pointEvents', JSON.stringify(recentEvents));
   }, [totalPoints, recentEvents]);
-  // インジケータの位置が変更されたらローカルストレージに保存
-  useEffect(() => {
-    localStorage.setItem('indicatorPosition', JSON.stringify(indicatorPosition));
-  }, [indicatorPosition]);
-    // ポイント追加処理
+
+  // ポイント追加処理
   const addPoints = (event: Omit<PointEvent, 'id' | 'timestamp' | 'read'>) => {
     const timestamp = Date.now();
     const id = `point-${timestamp}`;
@@ -126,22 +107,15 @@ export const PointsProvider: React.FC<PointsProviderProps> = ({ children }) => {
     );
   };
 
-  // インジケータの位置を更新
-  const updateIndicatorPosition = (position: IndicatorPosition) => {
-    setIndicatorPosition(position);
-  };
-
   return (
     <PointsContext.Provider 
       value={{ 
         totalPoints, 
         recentEvents,
         unreadCount,
-        indicatorPosition,
         addPoints, 
         markAllAsRead,
         markAsRead,
-        updateIndicatorPosition
       }}
     >
       {children}
