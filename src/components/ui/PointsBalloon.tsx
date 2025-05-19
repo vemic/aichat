@@ -95,8 +95,7 @@ const PointsBalloon: React.FC = () => {
         points: nextNotification.points,
         visible: true
       });
-      
-      // アニメーション完了後に状態をリセット（slideIn + 表示期間 = 0.3s + 1.5s = 1.8s）
+        // アニメーション完了後に状態をリセット（slideIn + 表示期間 = 0.3s + 2.2s = 2.5s）
       animationTimerRef.current = setTimeout(() => {
         // fadeOutアニメーション開始
         fadeOutTimerRef.current = setTimeout(() => {
@@ -110,7 +109,7 @@ const PointsBalloon: React.FC = () => {
           setTimeout(() => {
             setIsAnimating(false);
           }, 100);
-        }, 1800); // slideInとメッセージ表示時間
+        }, 2500); // slideInとメッセージ表示時間を延長
       }, 0);
     }
   }, [notificationQueue, isAnimating]);
@@ -122,13 +121,12 @@ const PointsBalloon: React.FC = () => {
   
   return (
     <Box
-      sx={{
-        position: 'fixed',
+      sx={{        position: 'fixed',
         bottom: '16px',
         left: '16px',
         zIndex: 9999,
-        animation: 'slideIn 0.3s ease-out forwards, fadeOut 0.5s ease-out 1.8s forwards',
-        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))',
+        animation: 'slideIn 0.3s ease-out forwards, fadeOut 0.5s ease-out 2.5s forwards', // 表示時間を延長
+        filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.25))', // シャドウを強化
         maxWidth: '250px',
         '@keyframes slideIn': {
           '0%': { opacity: 0, transform: 'translateY(10px)' },
@@ -139,25 +137,23 @@ const PointsBalloon: React.FC = () => {
           '100%': { opacity: 0 }
         }
       }}
-    >
-      <Box
+    >      <Box
         sx={{
           display: 'flex',
-          bgcolor: 'rgba(129, 199, 132, 0.1)',  // さらに薄い緑色
-          color: '#2e7d32', // success.dark相当の濃い緑色のテキスト
+          bgcolor: 'rgba(129, 199, 132, 0.85)',  // 不透明度を上げて濃い緑色の背景に
+          color: 'white', // テキストを白色に変更してコントラストを上げる
           px: 2,
           py: 1,
           borderRadius: 1,
           alignItems: 'center',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)', // シャドウを少し強く
           border: '1px solid',
-          borderColor: 'rgba(129, 199, 132, 0.2)', // さらに薄いボーダー
-          backdropFilter: 'blur(8px)',
+          borderColor: 'rgba(255, 255, 255, 0.3)', // ボーダーを白っぽく
+          backdropFilter: 'blur(4px)',
           whiteSpace: 'nowrap'
         }}
-      >
-        <StarIcon sx={{ mr: 1, fontSize: '1rem', color: '#4caf50' }} />
-        <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+      >        <StarIcon sx={{ mr: 1, fontSize: '1rem', color: 'yellow', filter: 'drop-shadow(0 0 2px rgba(255, 255, 0, 0.5))' }} />
+        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
           +{animatingPoints.points} {t('ポイント')} {t('獲得')}
         </Typography>
       </Box>
