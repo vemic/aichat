@@ -1,19 +1,24 @@
 import React from 'react';
 import { Box, Button, Typography, Paper } from '@mui/material';
 import { usePoints } from '../../context/PointsContext';
-import { useTranslation } from 'react-i18next';
-
 // 開発用デバッグコンポーネント
 const DebugPanel: React.FC = () => {
   const { addPoints } = usePoints();
-  const { t } = useTranslation();
-  
-  // ポイントを追加する関数
+    // ポイントを追加する関数
   const handleAddPoints = (type: 'login' | 'chat' | 'feedback' | 'signup' | 'daily' | 'other', points: number) => {
+    const messages = {
+      'login': 'ログインで5ポイント獲得しました',
+      'chat': 'メッセージ送信で1ポイント獲得しました',
+      'feedback': 'フィードバック提供で2ポイント獲得しました',
+      'signup': '新規登録で50ポイント獲得しました',
+      'daily': '毎日のボーナスで3ポイント獲得しました',
+      'other': `${points}ポイント獲得しました`
+    };
+    
     addPoints({
       type,
       points,
-      message: t(`${points} points earned for ${type}`)
+      message: messages[type] || messages['other']
     });
   };
   

@@ -6,7 +6,6 @@ import {
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
-import { usePoints } from '../../context/PointsContext';
 import SendIcon from '@mui/icons-material/Send';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import MicIcon from '@mui/icons-material/Mic';
@@ -38,7 +37,6 @@ const MODEL_OPTIONS = [
 const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
   const { t } = useTranslation();
   const { mode } = useTheme();
-  const { addPoints } = usePoints(); // ポイントコンテキストを使用
   const [input, setInput] = useState('');
   const [rows, setRows] = useState(3);
   const textFieldRef = useRef<HTMLDivElement>(null);
@@ -196,17 +194,11 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
       // 入力履歴に追加
       setInputHistory(prev => [input, ...prev].slice(0, 20)); // 最大20件に制限
       setHistoryIndex(-1);
-      
-      onSendMessage(message);
+        onSendMessage(message);
       setInput('');
       setFiles([]);
       
-      // メッセージ送信でポイント追加 - usePointsフックから取得したaddPointsを使用
-      addPoints({
-        type: 'chat',
-        points: 1,
-        message: t('You earned 1 point for sending a message')
-      });
+      // ポイント追加はMainContentで行うため、ここでは行わない
     }
   };
     // キーボードショートカット

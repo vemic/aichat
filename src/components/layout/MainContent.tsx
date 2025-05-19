@@ -82,13 +82,11 @@ const MainContent: React.FC = () => {
     };
     
     // ユーザーメッセージをスレッドに追加
-    addMessage(activeThreadId, userMessage);
-    
-    // チャットメッセージ送信でポイント獲得
+    addMessage(activeThreadId, userMessage);    // チャットメッセージ送信でポイント獲得
     addPoints({
       type: 'chat',
       points: 1,
-      message: t('You earned 1 point for sending a message!')
+      message: 'メッセージ送信で1ポイント獲得しました'
     });
     
     // APIから応答取得
@@ -331,12 +329,11 @@ const MainContent: React.FC = () => {
   // フィードバック送信処理
   const handleFeedbackSubmit = (data: FeedbackData) => {
     console.log('Feedback submitted:', data);
-    
-    // フィードバック送信でポイント獲得
+      // フィードバック送信でポイント獲得
     addPoints({
       type: 'feedback',
       points: 2,
-      message: t('You earned 2 points for providing feedback!')
+      message: 'フィードバック提供で2ポイント獲得しました'
     });
     
     setSnackbarSeverity('success');
